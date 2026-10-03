@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barra e Interfaz Adaptada para xat.com</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: transparent; /* Permite ver el fondo original de xat */
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Contenedor principal ajustado exactamente al ancho estándar de xat (aprox 950px - 980px) */
+        #xat-app-container {
+            width: 100%;
+            max-width: 960px; 
+            margin: 25px auto 10px auto; /* Bajado un poco más desde el banner superior */
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            z-index: 50;
+            box-sizing: border-box;
+        }
+
+        /* --- BARRA SUPERIOR MÁS DELGADA CON MINIATURA --- */
+        .top-toolbar {
+            background-color: #1a2235;
+            border: 1px solid #2a3553;
+            border-radius: 6px;
+            padding: 5px 12px; /* Reducida la altura para hacerla más delgada */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+            flex-wrap: wrap;
+            gap: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            background-color: #0b1021;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid #2a3553;
+        }
+
+        .toolbar-btn {
+            background: transparent;
+            color: #8b9bb4;
+            border: none;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .toolbar-btn:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.05); }
+        .toolbar-btn.active { background-color: #1db954; color: white; border-radius: 15px; }
+
+        /* MINI REPRODUCTOR CENTRAL CON MINIATURA MÁS COMPACTO */
+        .toolbar-player-center {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #0b1021;
+            padding: 3px 10px;
+            border-radius: 15px;
+            border: 1px solid #2a3553;
+        }
+
+        .mini-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            object-fit: cover;
+            border: 1px solid #2a3553;
+        }
+
+        .mini-info {
+            display: flex;
+            flex-direction: column;
+            max-width: 110px;
+        }
+
+        .mini-title {
+            font-size: 10px;
+            font-weight: bold;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mini-artist {
+            font-size: 8px;
+            color: #8b9bb4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .toolbar-center-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 2px;
+        }
+
+        .bar-control-btn {
+            background: none;
+            border: none;
+            color: #8b9bb4;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            outline: none;
+        }
+        .bar-control-btn:hover { color: white; transform: scale(1.1); }
+        .bar-play-btn { color: #1db954; font-size: 16px; }
+        .bar-play-btn:hover { color: #1ed760; }
+
+        /* BUSCADOR COMPACTO */
+        .search-container { position: relative; }
+        
+        .search-input {
+            background-color: #0b1021;
+            border: 1px solid #2a3553;
+            border-radius: 15px;
+            color: white;
+            padding: 4px 25px 4px 12px;
+            font-size: 12px;
+            width: 150px;
+            outline: none;
+            transition: all 0.2s;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238b9bb4' width='12px' height='12px'%3E%3Cpath d='M10.533 1.279c-5.18 0-9.407 4.14-9.407 9.279s4.226 9.279 9.407 9.279c2.234 0 4.29-.77 5.907-2.058l4.353 4.353a1 1 0 1 0 1.414-1.414l-4.344-4.344a9.157 9.157 0 0 0 2.077-5.816c0-5.14-4.226-9.28-9.407-9.28zm-7.407 9.279c0-4.006 3.302-7.28 7.407-7.28s7.407 3.274 7.407 7.28-3.302 7.28-7.407 7.28-7.407-3.274-7.407-7.28z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+        .search-input:focus { border-color: #1db954; box-shadow: 0 0 6px rgba(29, 185, 84, 0.2); }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 6px;
+            width: 220px;
+            background-color: #1a2235;
+            border: 1px solid #2a3553;
+            border-radius: 6px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+        }
+
+        .search-results::-webkit-scrollbar { width: 4px; }
+        .search-results::-webkit-scrollbar-track { background: #0b1021; border-radius: 6px; }
+        .search-results::-webkit-scrollbar-thumb { background: #2a3553; border-radius: 6px; }
+
+        /* --- LAYOUT INFERIOR (PANELES REDUCIDOS Y SEPARADOS DEL MARCO) --- */
+        .panels-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px; /* Separación clara entre cuadros laterales y el chat central de 726px */
+            width: 100%;
+        }
+
+        /* PANEL IZQUIERDO REDUCIDO: REPRODUCTOR GRANDE */
+        .side-panel-left {
+            width: 210px; /* Reducido de tamaño */
+            background-color: #1a2235;
+            border: 1px solid #2a3553;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .player-img {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 6px;
+            object-fit: cover;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            border: 1px solid #0b1021;
+        }
+
+        .player-info { text-align: center; margin-bottom: 10px; width: 100%; }
+        .player-title { color: #ffffff; font-size: 13px; font-weight: bold; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-artist { color: #8b9bb4; font-size: 11px; }
+
+        /* ESPACIO VACÍO CENTRAL (Mapeado exactamente al ancho del chat de xat: 726px de ancho configurado en xatframe) */
+        .chat-placeholder-spacer {
+            width: 726px; /* Ancho exacto proporcionado del chat de xat */
+            height: 486px; /* Alto exacto proporcionado del chat de xat */
+            flex-shrink: 0;
+            display: none; /* Oculto visualmente aquí porque xat ya pone su iframe real encima o debajo, este div solo actúa como margen separador invisible si se requiere, o se puede usar de referencia */
+        }
+
+        /* PANEL DERECHO REDUCIDO: PLAYLIST */
+        .side-panel-right {
+            width: 230px; /* Reducido de tamaño */
+            background-color: #1a2235;
+            border: 1px solid #2a3553;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+            flex-shrink: 0;
+            overflow: hidden;
+            max-height: 320px;
+            box-sizing: border-box;
+        }
+
+        .playlist-header {
+            padding: 10px 12px;
+            border-bottom: 1px solid #2a3553;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #0b1021;
+        }
+
+        .playlist-header-img { width: 30px; height: 30px; border-radius: 4px; object-fit: cover; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+
+        .song-list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        
+        .song-list-container::-webkit-scrollbar { width: 4px; }
+        .song-list-container::-webkit-scrollbar-track { background: #1a2235; }
+        .song-list-container::-webkit-scrollbar-thumb { background: #2a3553; border-radius: 6px; }
+
+        .song-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(42, 53, 83, 0.2);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .song-item:hover { background-color: #2a3553; }
+        .song-item:hover .song-number { display: none; }
+        .song-item:hover .play-icon-hover { display: block; }
+        
+        .song-number-container { width: 16px; text-align: center; display: flex; justify-content: center; align-items: center; }
+        .play-icon-hover { display: none; color: #ffffff; }
+
+        .active-song-text { color: #1db954 !important; }
+
+        @keyframes pulse-shadow {
+            0% { box-shadow: 0 0 6px rgba(29, 185, 84, 0.2); }
+            50% { box-shadow: 0 0 14px rgba(29, 185, 84, 0.5); }
+            100% { box-shadow: 0 0 6px rgba(29, 185, 84, 0.2); }
+        }
+        .playing-shadow {
+            animation: pulse-shadow 2s infinite;
+            border-color: #1db954;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="xat-app-container">
+        
+        <!-- BARRA SUPERIOR MÁS DELGADA -->
+        <div class="top-toolbar">
+            <!-- Géneros musicales -->
+            <div class="toolbar-left">
+                <button class="toolbar-btn active" id="btn-electronica" onclick="loadGenre('electronica')">
+                    <i class="fas fa-headphones"></i> <span class="hidden sm:inline">Electrónica</span>
+                </button>
+                <button class="toolbar-btn" id="btn-pop" onclick="loadGenre('pop')">
+                    <i class="fas fa-microphone"></i> <span class="hidden sm:inline">Pop</span>
+                </button>
+                <button class="toolbar-btn" id="btn-rock" onclick="loadGenre('rock')">
+                    <i class="fas fa-guitar"></i> <span class="hidden sm:inline">Rock</span>
+                </button>
+            </div>
+
+            <!-- Mini reproductor central con miniatura -->
+            <div class="toolbar-player-center">
+                <img src="" id="mini-thumb" class="mini-thumb" alt="Miniatura">
+                <div class="mini-info">
+                    <div id="mini-title" class="mini-title">Cargando...</div>
+                    <div id="mini-artist" class="mini-artist">Artista</div>
+                </div>
+                <div class="toolbar-center-controls">
+                    <button class="bar-control-btn" title="Anterior" onclick="playPrevious()">
+                        <i class="fas fa-step-backward"></i>
+                    </button>
+                    <button class="bar-control-btn bar-play-btn" title="Reproducir/Pausar" onclick="togglePlay()">
+                        <i class="fas fa-play-circle" id="bar-play-icon"></i>
+                    </button>
+                    <button class="bar-control-btn" title="Siguiente" onclick="playNext()">
+                        <i class="fas fa-step-forward"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Buscador con sugerencias flotantes -->
+            <div class="search-container">
+                <input type="text" id="search-input" class="search-input" placeholder="Buscar canción..." autocomplete="off">
+                <div id="search-results" class="search-results"></div>
+            </div>
+        </div>
+
+        <!-- FILA DE PANELES LATERALES (Reducidos y separados del marco central de 726px) -->
+        <div class="panels-row">
+            
+            <!-- PANEL IZQUIERDO: REPRODUCTOR GRANDE REDUCIDO -->
+            <div class="side-panel-left">
+                <img src="" id="player-img" class="player-img" alt="Portada">
+                
+                <div class="player-info">
+                    <div id="player-title" class="player-title">Selecciona una pista</div>
+                    <div id="player-artist" class="player-artist">Playlist disponible</div>
+                </div>
+            </div>
+
+            <!-- ESPACIO CENTRAL VACÍO QUE RESPETA EXACTAMENTE LOS 726px DE LA CAJA DE XAT -->
+            <div style="width: 726px; flex-shrink: 0; pointer-events: none;"></div>
+
+            <!-- PANEL DERECHO: PLAYLIST REDUCIDA -->
+            <div class="side-panel-right">
+                <div class="playlist-header">
+                    <img src="" id="playlist-header-img" class="playlist-header-img">
+                    <div>
+                        <div class="text-white font-bold text-[11px]" id="playlist-header-title">Lista de Reproducción</div>
+                        <div class="text-[#8b9bb4] text-[9px]">Haz clic para reproducir</div>
+                    </div>
+                </div>
+                <div id="song-list" class="song-list-container"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const musicData = {
+            electronica: {
+                name: "Electrónica",
+                icon: "fas fa-headphones",
+                image: "https://xatimg.com/image/t7JMadg8NbqD.jpg", 
+                songs: [
+                    { title: "Neon Skyline", artist: "DJ Cyber", time: "3:45", bpm: 130, synth: "square", sequence: ["C4", "E4", "G4", "C5"] },
+                    { title: "Bass Resonance", artist: "DropX", time: "4:12", bpm: 128, synth: "sawtooth", sequence: ["D2", "D2", "F2", "A2"] },
+                    { title: "Galactic Voyage", artist: "AstroBeats", time: "5:01", bpm: 140, synth: "square", sequence: ["E4", "B4", "E5", "B4"] }
+                ]
+            },
+            pop: {
+                name: "Pop Hits",
+                icon: "fas fa-microphone",
+                image: "https://placehold.co/400x400/e1306c/ffffff?text=Pop+Hits", 
+                songs: [
+                    { title: "Midnight Dance", artist: "Luna Star", time: "2:55", bpm: 110, synth: "triangle", sequence: ["C4", "G4", "A4", "G4"] },
+                    { title: "Catching Feelings", artist: "The Vibes", time: "3:10", bpm: 105, synth: "sine", sequence: ["F4", "A4", "C5", "A4"] }
+                ]
+            },
+            rock: {
+                name: "Rock Alternativo",
+                icon: "fas fa-guitar",
+                image: "https://placehold.co/400x400/222222/ffffff?text=Rock+Zone", 
+                songs: [
+                    { title: "Steel Strings", artist: "The Amplifiers", time: "5:20", bpm: 100, synth: "sawtooth", sequence: ["E2", null, "E2", "G2"] },
+                    { title: "Rebel Yell", artist: "Thunderstrike", time: "4:40", bpm: 110, synth: "sawtooth", sequence: ["A2", "C3", "A2", "G2"] }
+                ]
+            }
+        };
+
+        let currentGenre = 'electronica';
+        let currentSongIndex = 0;
+        let currentLoopIndex = -1;
+        let isPlaying = false;
+        let synth = null;
+        let loop = null;
+
+        window.onload = () => {
+            loadGenre('electronica');
+        };
+
+        function initAudio() {
+            if (!synth) {
+                synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                synth.volume.value = -8;
+            }
+        }
+
+        function loadGenre(genreId) {
+            if (isPlaying) {
+                Tone.Transport.stop();
+                isPlaying = false;
+            }
+            currentLoopIndex = -1; 
+            currentGenre = genreId;
+            const data = musicData[genreId];
+
+            document.querySelectorAll('.toolbar-left .toolbar-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${genreId}`).classList.add('active');
+
+            document.getElementById('playlist-header-title').innerHTML = `<i class="${data.icon} mr-1"></i>${data.name}`;
+            document.getElementById('playlist-header-img').src = data.image;
+
+            selectSong(0); 
+            updatePlayUI();
+        }
+
+        function selectSong(index) {
+            currentSongIndex = index;
+            const data = musicData[currentGenre];
+            const song = data.songs[index];
+            
+            // Panel izquierdo
+            document.getElementById('player-title').textContent = song.title;
+            document.getElementById('player-artist').textContent = song.artist;
+            document.getElementById('player-img').src = data.image;
+
+            // Barra superior (miniatura)
+            document.getElementById('mini-title').textContent = song.title;
+            document.getElementById('mini-artist').textContent = song.artist;
+            document.getElementById('mini-thumb').src = data.image;
+
+            renderSongList();
+        }
+
+        function renderSongList() {
+            const data = musicData[currentGenre];
+            const songListContainer = document.getElementById('song-list');
+            songListContainer.innerHTML = ''; 
+
+            data.songs.forEach((song, index) => {
+                const isSelected = (index === currentSongIndex);
+                const titleColor = isSelected ? 'active-song-text' : 'text-white';
+                
+                const songHtml = `
+                    <div class="song-item group" onclick="selectAndPlaySong(${index})">
+                        <div class="flex items-center gap-2">
+                            <div class="song-number-container">
+                                <span class="${isSelected ? 'hidden' : 'inline'} text-[#8b9bb4] text-[10px] song-number">${index + 1}</span>
+                                <i class="fas ${isSelected && isPlaying ? 'fa-pause' : 'fa-play'} text-[#1db954] text-[8px] ${isSelected ? 'inline' : 'play-icon-hover'}"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="${titleColor} text-[11px] font-medium transition-colors">${song.title}</span>
+                                <span class="text-[#8b9bb4] text-[9px] transition-colors">${song.artist}</span>
+                            </div>
+                        </div>
+                        <span class="text-[#8b9bb4] text-[9px]">${song.time}</span>
+                    </div>
+                `;
+                songListContainer.innerHTML += songHtml;
+            });
+        }
+
+        async function togglePlay() {
+            await Tone.start(); 
+            initAudio();
+
+            if (isPlaying) {
+                Tone.Transport.pause();
+                isPlaying = false;
+            } else {
+                startPlayingSelected();
+            }
+            updatePlayUI();
+        }
+        
+        function startPlayingSelected() {
+            const data = musicData[currentGenre];
+            const song = data.songs[currentSongIndex];
+
+            if (currentLoopIndex !== currentSongIndex || !loop) {
+                if (loop) {
+                    loop.stop();
+                    loop.dispose();
+                }
+                synth.set({ oscillator: { type: song.synth } });
+                Tone.Transport.bpm.value = song.bpm;
+                Tone.Transport.stop(); 
+                
+                loop = new Tone.Sequence((time, note) => {
+                    if (note) synth.triggerAttackRelease(note, "8n", time);
+                }, song.sequence, "4n");
+                
+                loop.start(0);
+                currentLoopIndex = currentSongIndex;
+            }
+            
+            Tone.Transport.start();
+            isPlaying = true;
+        }
+
+        async function selectAndPlaySong(index) {
+            await Tone.start();
+            initAudio();
+
+            if (index === currentSongIndex) {
+                togglePlay();
+                return;
+            }
+            selectSong(index);
+            startPlayingSelected();
+            updatePlayUI();
+        }
+
+        function playNext() {
+            if (isPlaying) { Tone.Transport.pause(); isPlaying = false; }
+            
+            const data = musicData[currentGenre];
+            let nextIndex = currentSongIndex + 1;
+            if (nextIndex >= data.songs.length) nextIndex = 0; 
+            
+            selectSong(nextIndex); 
+            updatePlayUI(); 
+        }
+
+        function playPrevious() {
+            if (isPlaying) { Tone.Transport.pause(); isPlaying = false; }
+            
+            const data = musicData[currentGenre];
+            let prevIndex = currentSongIndex - 1;
+            if (prevIndex < 0) prevIndex = data.songs.length - 1; 
+            
+            selectSong(prevIndex); 
+            updatePlayUI(); 
+        }
+
+        function updatePlayUI() {
+            const iconClass = isPlaying ? 'fa-pause-circle' : 'fa-play-circle';
+            document.getElementById('bar-play-icon').className = `fas ${iconClass}`;
+            
+            const playerImg = document.getElementById('player-img');
+            const miniThumb = document.getElementById('mini-thumb');
+            
+            if(isPlaying) {
+                playerImg.classList.add('playing-shadow');
+                miniThumb.classList.add('playing-shadow');
+            } else {
+                playerImg.classList.remove('playing-shadow');
+                miniThumb.classList.remove('playing-shadow');
+            }
+
+            renderSongList();
+        }
+
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            
+            if (query.length === 0) {
+                searchResults.style.display = 'none';
+                return;
+            }
+
+            let matches = [];
+            for (const genreId in musicData) {
+                const genre = musicData[genreId];
+                genre.songs.forEach((song, index) => {
+                    if (song.title.toLowerCase().includes(query) || song.artist.toLowerCase().includes(query)) {
+                        matches.push({ genreId, songIndex: index, song, image: genre.image });
+                    }
+                });
+            }
+            renderSearchResults(matches);
+        });
+
+        function renderSearchResults(matches) {
+            searchResults.innerHTML = '';
+            if (matches.length === 0) {
+                searchResults.innerHTML = '<div class="p-2 text-center text-[#8b9bb4] text-[11px]">No se encontraron resultados</div>';
+            } else {
+                matches.forEach(match => {
+                    const item = document.createElement('div');
+                    item.className = 'song-item group';
+                    item.onclick = () => playFromSearch(match.genreId, match.songIndex);
+                    
+                    item.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <img src="${match.image}" class="w-5 h-5 rounded object-cover">
+                            <div class="flex flex-col">
+                                <span class="text-[11px] font-medium group-hover:text-[#1db954] text-white transition-colors">${match.song.title}</span>
+                                <span class="text-[9px] text-[#8b9bb4]">${match.song.artist}</span>
+                            </div>
+                        </div>
+                        <i class="fas fa-play text-[9px] text-[#1db954] opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    `;
+                    searchResults.appendChild(item);
+                });
+            }
+            searchResults.style.display = 'block';
+        }
+
+        async function playFromSearch(genreId, songIndex) {
+            searchResults.style.display = 'none';
+            searchInput.value = '';
+            if (currentGenre !== genreId) loadGenre(genreId);
+            await selectAndPlaySong(songIndex);
+        }
+
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.search-container')) {
+                document.getElementById('search-results').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
